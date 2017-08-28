@@ -21,13 +21,17 @@ def slack_msg(msg, channel):
     return sc.api_call(
         "chat.postMessage",
         channel=channel,
+        username='twitter-likes',
         as_user = True,
         text=msg
     )
 
 def create_msg(f):
-    # msg = f.user.screen_name.encode('utf8') + '\n' + f.text.encode('utf8')
-    msg = re.search('https://t.co/[A-z0-9]+$', f.text).group(0)
+    linkpattern = re.compile('https://t.co/[A-z0-9]+$')
+    if linkpattern.match(f.text):
+        msg = linkpattern.search(f.text).group(0)
+    else:
+        msg = f.user.screen_name.encode('utf8') + '\n' + f.text.encode('utf8')
     return msg
 
 def main():
