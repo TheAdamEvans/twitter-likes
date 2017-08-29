@@ -1,17 +1,16 @@
-from numpy.random import exponential
+import os
+import re
 from time import sleep
-
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 
-import os
-from slackclient import SlackClient
-import re
-
 import twitter
+from slackclient import SlackClient
+from numpy.random import exponential
 
-def is_yesterday(f, days = 1):
-    tweet_time = parse(f.created_at).replace(tzinfo=None)
+
+def is_yesterday(tweet, days = 1):
+    tweet_time = parse(tweet.created_at).replace(tzinfo=None)
     tweet_age = datetime.utcnow() - tweet_time
     return tweet_age < timedelta(days)
 
@@ -26,12 +25,12 @@ def slack_msg(msg, channel):
         text=msg
     )
 
-def create_msg(f):
+def create_msg(tweet):
     linkpattern = re.compile('https://t.co/[A-z0-9]+$')
-    if linkpattern.match(f.text):
-        msg = linkpattern.search(f.text).group(0)
+    if linkpattern.match(tweet.text):
+        msg = linkpattern.search(tweet.text).group(0)
     else:
-        msg = f.user.screen_name.encode('utf8') + '\n' + f.text.encode('utf8')
+        msg = tweet.user.screen_name.encode('utf8') + '\n' + tweet.text.encode('utf8')
     return msg
 
 def main():
@@ -40,18 +39,18 @@ def main():
                       consumer_secret=os.environ['TWITTER_CONSUMER_SECRET'],
                       access_token_key=os.environ['TWITTER_ACCESS_TOKEN_KEY'],
                       access_token_secret=os.environ['TWITTER_ACCESS_TOKEN_SECRET'])
-    fav = api.GetFavorites()
+    favs = api.GetFavorites()
     
     # determine how long ago the tweet was favorited
-    todays_favs = [f for f in fav if is_yesterday(f)]
+    todays_favs = [f for f in favs if is_yesterday(f)]
     
     # extract text from the Status object
-    tweets = map(create_msg, todays_favs)
+    msgs = map(create_msg, todays_favs)
     
     # send updates
-    for t in tweets:
+    for msg in msgs:
         sleep(exponential(10))
-        response = slack_msg(t, '@adam.evans')
+        response = slack_msg(msg, '@adam.evans')
         print response
 
 if __name__ == '__main__':
